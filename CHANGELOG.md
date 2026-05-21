@@ -4,10 +4,12 @@ All notable changes to the official Adfinia Android SDK land here. Format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The SDK
 follows [semver](https://semver.org/) starting at 1.0.0.
 
-## [1.0.0-rc.1] — 2026-05-22
+## [1.0.0] — 2026-05-22
 
-First release candidate. The wire surface and public API are now frozen
-for the 1.0 line — only backwards-compatible additions land after this.
+First stable release. Same content as the dev-internal-only
+`1.0.0-rc.1` build (never published to Maven Central, never tagged on
+GitHub); the founder direction on 2026-05-22 was to drop the `-rc.1`
+suffix and ship straight as `1.0.0`.
 
 ### Added
 - **Server-driven runtime config.** On `Adfinia.initialize()`, the SDK
@@ -28,9 +30,15 @@ for the 1.0 line — only backwards-compatible additions land after this.
   HTTP header value.
 
 ### Changed
-- Library version bumped `0.2.0 → 1.0.0-rc.1`.
+- Library version bumped `0.2.0 → 1.0.0`.
 - `mavenPublishing.coordinates(...)` updated to match the
   `BuildMeta.LIBRARY_VERSION` constant.
+
+## ~~[1.0.0-rc.1] — 2026-05-22~~
+
+~~Dev-internal release candidate. Never published to Maven Central,
+never tagged on GitHub; superseded by `1.0.0` on the same day per
+founder direction. Same code, no `-rc.1` suffix on the public artifact.~~
 
 ### Notes
 - Maven Central publish is configured but NOT triggered by this commit
