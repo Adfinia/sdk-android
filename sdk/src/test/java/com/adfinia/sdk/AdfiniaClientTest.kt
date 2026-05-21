@@ -71,7 +71,7 @@ class AdfiniaClientTest {
         client.track("Order Completed", mapOf("total" to 49.99))
         waitFor { transport.sent.size >= 1 }
         val env = transport.sent.single()
-        assertEquals("/api/v1/track", env.path)
+        assertEquals(AdfiniaEnvelopeKind.TRACK, env.kind)
         assertTrue(env.body.contains("\"event_name\":\"Order Completed\""))
         assertTrue(env.body.contains("\"total\":49.99"))
         client._shutdownForTesting()
@@ -88,7 +88,7 @@ class AdfiniaClientTest {
         client.identify(AdfiniaIdentifyArg.CustomerId("cust_42"), mapOf("plan" to "growth"))
         waitFor { transport.sent.size >= 1 }
         val env = transport.sent.single()
-        assertEquals("/api/v1/identify", env.path)
+        assertEquals(AdfiniaEnvelopeKind.IDENTIFY, env.kind)
         assertTrue(env.body.contains("\"customer_id\":\"cust_42\""))
         assertTrue(env.body.contains("\"plan\":\"growth\""))
         client._shutdownForTesting()
@@ -135,7 +135,7 @@ class AdfiniaClientTest {
         client.alias("cust_new", "cust_old")
         waitFor { transport.sent.size >= 1 }
         val env = transport.sent.single()
-        assertEquals("/api/v1/track", env.path)
+        assertEquals(AdfiniaEnvelopeKind.TRACK, env.kind)
         assertTrue(env.body.contains("\"event_name\":\"\$alias\""))
         assertTrue(env.body.contains("\"previous_id\":\"cust_old\""))
         assertEquals("cust_new", client._identity()?.customerId)
@@ -242,7 +242,7 @@ class AdfiniaClientTest {
         client.screen("Pricing", null)
         waitFor { transport.sent.size >= 1 }
         val env = transport.sent.single()
-        assertEquals("/api/v1/track", env.path)
+        assertEquals(AdfiniaEnvelopeKind.TRACK, env.kind)
         assertTrue(env.body.contains("\"event_name\":\"Pricing\""))
         client._shutdownForTesting()
     }

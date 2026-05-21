@@ -3,10 +3,15 @@
 // connection pool, dispatcher, and idle threads are reused across every
 // SDK instance and across foreground/background flushes (R-NEXT-AND-2).
 //
-// The API's `/api/v1/identify` and `/api/v1/track` endpoints are single-
-// event today (see api/api/openapi.yaml § AGENT-CDP-IDENTITY 2026-05-19),
-// so a batch is fanned out into one request per envelope and the worst
-// outcome wins. When the bulk endpoint lands, swap in a single POST here.
+// AGENT-SDK-INGEST-KAFKA (2026-05-21) — switched to the batch endpoints:
+//   - 1 event              → POST /api/v1/{track,identify} (legacy)
+//   - All identify (N>1)   → POST /api/v1/identify/batch
+//   - All track-like (N>1) → POST /api/v1/track/batch
+//   - Mixed batch          → one batch per kind, parallel
+//
+// The queue already encodes per-event JSON; we wrap into `{"events":[...]}`
+// here. The single-event shortcut keeps offline-drain flushes (1-3 events)
+// off the batch overhead.
 
 package com.adfinia.sdk
 
@@ -31,12 +36,17 @@ class OkHttpTransport(
 
     override suspend fun send(batch: List<AdfiniaEnvelope>): TransportResult {
         if (batch.isEmpty()) return TransportResult.OK
+        if (batch.size == 1) {
+            return sendOne(batch[0])
+        }
         return coroutineScope {
-            val results = batch.map { env ->
-                async(Dispatchers.IO) { sendOne(env) }
-            }.awaitAll()
-            // Worst result wins — any permanent failure ⇒ permanent so the
-            // queue drops only on a true 4xx; any retryable failure ⇒ retry.
+            val identifies = batch.filter { it.kind == AdfiniaEnvelopeKind.IDENTIFY }
+            val tracks = batch.filter { it.kind == AdfiniaEnvelopeKind.TRACK }
+            val calls = buildList {
+                if (identifies.isNotEmpty()) add(async(Dispatchers.IO) { sendBatch("/api/v1/identify/batch", identifies) })
+                if (tracks.isNotEmpty()) add(async(Dispatchers.IO) { sendBatch("/api/v1/track/batch", tracks) })
+            }
+            val results = calls.awaitAll()
             var ok = true
             var permanent = false
             var status: Int? = null
@@ -51,8 +61,46 @@ class OkHttpTransport(
         }
     }
 
+    private suspend fun sendBatch(path: String, envelopes: List<AdfiniaEnvelope>): TransportResult = withContext(Dispatchers.IO) {
+        val url = host.trimEnd('/') + path
+        // Concatenate the already-encoded per-event JSON bodies into the
+        // {"events":[...]} envelope without re-parsing — each `body` is
+        // already a valid JSON object.
+        val sb = StringBuilder()
+        sb.append("{\"events\":[")
+        envelopes.forEachIndexed { i, env ->
+            if (i > 0) sb.append(',')
+            sb.append(env.body)
+        }
+        sb.append("]}")
+        val req = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $writeKey")
+            .header("Content-Type", "application/json")
+            .header("User-Agent", userAgent)
+            .post(sb.toString().toRequestBody(JSON))
+            .build()
+        try {
+            client.newCall(req).execute().use { res ->
+                val code = res.code
+                if (res.isSuccessful) {
+                    TransportResult(ok = true, permanent = false, status = code)
+                } else if (code in 400..499) {
+                    TransportResult(ok = false, permanent = true, status = code)
+                } else {
+                    TransportResult(ok = false, permanent = false, status = code)
+                }
+            }
+        } catch (_: IOException) {
+            TransportResult(ok = false, permanent = false, status = null)
+        } catch (_: Throwable) {
+            TransportResult(ok = false, permanent = false, status = null)
+        }
+    }
+
     private suspend fun sendOne(env: AdfiniaEnvelope): TransportResult = withContext(Dispatchers.IO) {
-        val url = host.trimEnd('/') + env.path
+        val path = if (env.kind == AdfiniaEnvelopeKind.IDENTIFY) "/api/v1/identify" else "/api/v1/track"
+        val url = host.trimEnd('/') + path
         val req = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $writeKey")

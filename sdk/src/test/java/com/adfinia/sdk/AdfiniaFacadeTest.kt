@@ -54,8 +54,8 @@ class AdfiniaFacadeTest {
         }
         val sent = synchronized(transport.sent) { transport.sent.toList() }
         assertEquals(2, sent.size)
-        assertTrue(sent.any { it.path == "/api/v1/identify" })
-        assertTrue(sent.any { it.path == "/api/v1/track" && it.body.contains("Order Completed") })
+        assertTrue(sent.any { it.kind == AdfiniaEnvelopeKind.IDENTIFY })
+        assertTrue(sent.any { it.kind == AdfiniaEnvelopeKind.TRACK && it.body.contains("Order Completed") })
     }
 
     @Test

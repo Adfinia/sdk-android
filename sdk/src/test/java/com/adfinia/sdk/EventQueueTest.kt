@@ -224,14 +224,17 @@ class EventQueueTest {
     }
 
     @Test
-    fun `routes identify payloads to the identify path`() = runBlocking {
+    fun `routes identify payloads to the identify kind`() = runBlocking {
         val transport = RecordingTransport()
         val q = newQueue(transport = transport, flushAt = 1, flushIntervalMs = 60_000L)
         try {
             q.enqueue(makePayload("a").copy(type = AdfiniaPayloadType.IDENTIFY, event = null, customerId = "cust_42"))
             waitFor { transport.callCount >= 1 }
             val env = transport.flatSent.single()
-            assertEquals("/api/v1/identify", env.path)
+            // AGENT-SDK-INGEST-KAFKA (2026-05-21) — envelopes carry a kind
+            // discriminator. The transport groups by kind onto the
+            // /api/v1/{track,identify}/batch endpoints.
+            assertEquals(AdfiniaEnvelopeKind.IDENTIFY, env.kind)
             assertTrue(env.body.contains("\"customer_id\""))
         } finally {
             q.destroy()

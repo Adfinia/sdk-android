@@ -103,9 +103,9 @@ internal class EventQueue(
             }
             val envelopes = sending.map { p ->
                 if (p.type == AdfiniaPayloadType.IDENTIFY) {
-                    AdfiniaEnvelope("/api/v1/identify", PayloadCodec.toIdentifyWire(p))
+                    AdfiniaEnvelope(AdfiniaEnvelopeKind.IDENTIFY, PayloadCodec.toIdentifyWire(p))
                 } else {
-                    AdfiniaEnvelope("/api/v1/track", PayloadCodec.toTrackWire(p))
+                    AdfiniaEnvelope(AdfiniaEnvelopeKind.TRACK, PayloadCodec.toTrackWire(p))
                 }
             }
             val result = try {
