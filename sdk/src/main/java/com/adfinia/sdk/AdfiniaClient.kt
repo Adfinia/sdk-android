@@ -13,7 +13,15 @@ package com.adfinia.sdk
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -36,6 +44,13 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
     private var queue: EventQueue? = null
     private var context: AdfiniaContext? = null
     private val now: () -> Long = hooks.nowMs ?: { System.currentTimeMillis() }
+
+    /**
+     * Scope for the fire-and-forget GET /api/v1/sdk/config call on init.
+     * SupervisorJob so a failed fetch doesn't cancel sibling work; IO
+     * dispatcher because OkHttp's blocking call is the easiest path.
+     */
+    private val configFetchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * Initialise the SDK. Idempotent — subsequent calls are logged and ignored
@@ -81,6 +96,54 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
             }
         }
         log("initialised host=${config.host}")
+
+        // Best-effort: pull per-tenant runtime config from the server. The
+        // server endpoint (GET /api/v1/sdk/config) returns batch_size /
+        // flush_interval_ms / sampling_rate / breaker thresholds; we apply
+        // the knobs we understand and ignore the rest (forward-compat: an
+        // older SDK never breaks when the server adds a new field).
+        //
+        // Fire-and-forget on a background coroutine — a slow / failing
+        // config fetch never blocks first-event delivery. Tests skip this
+        // by setting `hooks.skipBackgroundWorker=true` to avoid network IO.
+        if (!hooks.skipBackgroundWorker) {
+            configFetchScope.launch {
+                fetchRemoteConfig(config.host, config.writeKey)
+            }
+        }
+    }
+
+    /**
+     * Hit GET /api/v1/sdk/config and apply the knobs we recognise. Soft-
+     * fails on every error path — the local defaults stay.
+     */
+    private fun fetchRemoteConfig(host: String, writeKey: String) {
+        val url = host.trimEnd('/') + "/api/v1/sdk/config"
+        val req = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $writeKey")
+            .header("X-Adfinia-SDK-Version", BuildMeta.SDK_VERSION_HEADER)
+            .get()
+            .build()
+        try {
+            CONFIG_CLIENT.newCall(req).execute().use { res ->
+                if (res.code == 426) {
+                    log("SDK below the server minimum — please upgrade adfinia-sdk-android")
+                    return
+                }
+                if (!res.isSuccessful) return
+                val body = res.body?.string() ?: return
+                val parsed = JSONObject(body)
+                val batchSize = if (parsed.has("batch_size")) parsed.optInt("batch_size") else null
+                val flushIntervalMs = if (parsed.has("flush_interval_ms")) parsed.optLong("flush_interval_ms") else null
+                queue?.applyRemoteConfig(batchSize, flushIntervalMs)
+                log("remote config applied batch=$batchSize intervalMs=$flushIntervalMs")
+            }
+        } catch (_: IOException) {
+            log("remote config fetch failed (io) — sticking with defaults")
+        } catch (_: Throwable) {
+            log("remote config fetch failed — sticking with defaults")
+        }
     }
 
     fun identify(arg: AdfiniaIdentifyArg, extraTraits: AdfiniaTraits?) {
@@ -266,6 +329,23 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
             Log.d("Adfinia", message)
         } catch (_: Throwable) {
             // Log unavailable off-Android — swallow.
+        }
+    }
+
+    companion object {
+        /**
+         * Shared OkHttpClient for the lightweight GET /api/v1/sdk/config
+         * call. Kept separate from `OkHttpTransport.SHARED_CLIENT` so a
+         * stalled event flush can't block config refreshes (and vice
+         * versa). Short timeouts — config fetches that take >5s on init
+         * aren't worth waiting on.
+         */
+        private val CONFIG_CLIENT: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
         }
     }
 }

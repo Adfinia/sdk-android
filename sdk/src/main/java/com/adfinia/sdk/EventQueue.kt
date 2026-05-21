@@ -30,14 +30,23 @@ import kotlin.coroutines.CoroutineContext
 internal class EventQueue(
     private val store: AdfiniaKVStore,
     private val transport: AdfiniaTransport,
-    private val flushAt: Int,
-    private val flushIntervalMs: Long,
+    flushAt: Int,
+    flushIntervalMs: Long,
     private val maxQueueSize: Int,
     private val debug: (String) -> Unit,
     private val context: CoroutineContext = Dispatchers.IO,
     /** Test seam — lets tests inject a controlled time source. */
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
+    /**
+     * Effective knobs — initialised from constructor args, then can be
+     * tightened by `applyRemoteConfig()` after a successful
+     * `GET /api/v1/sdk/config`. Reads happen on the same scope coroutine
+     * as flush(), so a plain @Volatile is enough — we don't need a Mutex
+     * just to swap an Int.
+     */
+    @Volatile private var flushAt: Int = flushAt
+    @Volatile private var flushIntervalMs: Long = flushIntervalMs
     private val buffer = ArrayDeque<AdfiniaPayload>()
     private val mutex = Mutex()
     private var retryDelayMs: Long = 0L
@@ -155,6 +164,26 @@ internal class EventQueue(
     }
 
     fun size(): Int = synchronized(buffer) { buffer.size }
+
+    /**
+     * Apply config knobs received from `GET /api/v1/sdk/config`. Soft —
+     * nil / non-positive values keep the existing value. Reschedules the
+     * next flush so a tighter interval takes effect right away instead
+     * of waiting for the current timer.
+     */
+    fun applyRemoteConfig(remoteFlushAt: Int?, remoteFlushIntervalMs: Long?) {
+        if (destroyed) return
+        var changed = false
+        if (remoteFlushAt != null && remoteFlushAt > 0 && remoteFlushAt != flushAt) {
+            flushAt = remoteFlushAt
+            changed = true
+        }
+        if (remoteFlushIntervalMs != null && remoteFlushIntervalMs > 0 && remoteFlushIntervalMs != flushIntervalMs) {
+            flushIntervalMs = remoteFlushIntervalMs
+            changed = true
+        }
+        if (changed) scheduleNext()
+    }
 
     fun destroy() {
         destroyed = true

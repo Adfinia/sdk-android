@@ -78,6 +78,7 @@ class OkHttpTransport(
             .header("Authorization", "Bearer $writeKey")
             .header("Content-Type", "application/json")
             .header("User-Agent", userAgent)
+            .header("X-Adfinia-SDK-Version", BuildMeta.SDK_VERSION_HEADER)
             .post(sb.toString().toRequestBody(JSON))
             .build()
         try {
@@ -106,6 +107,7 @@ class OkHttpTransport(
             .header("Authorization", "Bearer $writeKey")
             .header("Content-Type", "application/json")
             .header("User-Agent", userAgent)
+            .header("X-Adfinia-SDK-Version", BuildMeta.SDK_VERSION_HEADER)
             .post(env.body.toRequestBody(JSON))
             .build()
         try {
