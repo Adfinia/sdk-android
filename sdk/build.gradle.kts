@@ -68,7 +68,7 @@ mavenPublishing {
     pom {
         name.set("Adfinia SDK for Android")
         description.set("Official Adfinia SDK — first-party event + identify ingestion.")
-        url.set("https://github.com/infinia-net/adfinia-android-sdk")
+        url.set("https://github.com/Adfinia/sdk-android")
         licenses {
             license {
                 name.set("MIT License")
@@ -76,7 +76,16 @@ mavenPublishing {
             }
         }
         scm {
-            url.set("https://github.com/infinia-net/adfinia-android-sdk")
+            url.set("https://github.com/Adfinia/sdk-android")
+            connection.set("scm:git:git://github.com/Adfinia/sdk-android.git")
+            developerConnection.set("scm:git:ssh://github.com/Adfinia/sdk-android.git")
+        }
+        developers {
+            developer {
+                id.set("adfinia")
+                name.set("Adfinia (New Emerging Technologies)")
+                email.set("engineering@adfinia.com")
+            }
         }
     }
 }
