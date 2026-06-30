@@ -4,6 +4,18 @@ All notable changes to the official Adfinia Android SDK land here. Format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The SDK
 follows [semver](https://semver.org/) starting at 1.0.0.
 
+## [Unreleased]
+
+### Changed
+- Transport now ALWAYS batches: even a single event ships as a 1-element
+  `{"events":[...]}` to `POST /api/v1/{track,identify}/batch`. The single-event
+  endpoints are no longer used. The single `POST /api/v1/track` path does not
+  stamp the event environment from the authenticating API key (it defaults to
+  `live`), so a `adf_test_` key's solo event would be mis-tagged and leak into
+  live analytics; the batch endpoint stamps it from the key. Mirrors
+  `@adfinia/sdk-web` 1.3.1 + `@adfinia/sdk-react-native` 1.0.1. Folds into the
+  first published release (1.0.0 is not yet on Maven Central).
+
 ## [1.0.0] — 2026-05-22
 
 First stable release. Same content as the dev-internal-only
