@@ -17,10 +17,13 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            consumerProguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "consumer-rules.pro"
-            )
+            // Ship ONLY the library's own consumer rules. The default
+            // proguard-android-optimize.txt is an APP-minification file; AGP
+            // rejects it as a consumer config file ("Default file
+            // proguard-android-optimize.txt should not be used as a consumer
+            // configuration file"), which failed mergeReleaseConsumerProguardFiles
+            // and broke the release build / publish.
+            consumerProguardFiles("consumer-rules.pro")
         }
     }
 
