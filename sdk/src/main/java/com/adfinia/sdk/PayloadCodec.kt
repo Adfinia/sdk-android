@@ -222,6 +222,15 @@ internal object PayloadCodec {
         null, JSONObject.NULL -> null
         is JSONObject -> fromJson(v)
         is JSONArray -> fromJsonArray(v)
+        // Normalize Number subtypes so a queue round-trip is deterministic
+        // across org.json implementations. The JVM `org.json` artifact (unit
+        // tests) parses JSON decimals as BigDecimal and big integers as
+        // BigInteger, whereas Android's framework `org.json` (the real runtime)
+        // returns Double/Long. Coerce to the canonical Double/Long so decoded
+        // properties match what was encoded regardless of which org.json is in
+        // play. (No wire impact: both serialize to the same JSON text.)
+        is java.math.BigDecimal -> v.toDouble()
+        is java.math.BigInteger -> v.toLong()
         else -> v
     }
 }
