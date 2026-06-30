@@ -55,7 +55,9 @@ class AdfiniaClientTest {
     @Test
     fun `public methods called before initialize are no-ops`() = runBlocking {
         val (client, transport) = newClient()
-        client.track("Order Completed")
+        // AdfiniaClient.track requires `properties` (the public Adfinia.track
+        // facade defaults it to null); pass null explicitly here.
+        client.track("Order Completed", null)
         delay(50)
         assertEquals(0, transport.sent.size)
     }

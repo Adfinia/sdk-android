@@ -40,12 +40,10 @@ android {
         jvmTarget = "17"
     }
 
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
+    // NOTE: the release variant's publishing (incl. sources + javadoc jars) is
+    // configured by the com.vanniktech.maven.publish plugin below. Declaring
+    // singleVariant("release") here too double-registers the variant and fails
+    // configuration ("Using singleVariant publishing DSL multiple times").
 }
 
 dependencies {
