@@ -6,6 +6,12 @@ follows [semver](https://semver.org/) starting at 1.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- Default ingest `host` is now `https://api.adfinia.com` (was
+  `https://events.adfinia.com`, an unprovisioned domain that failed at DNS so
+  events were dropped silently). Callers passing an explicit `host` are
+  unaffected. Brings Android in line with web and React Native.
+
 ### Changed
 - Transport now ALWAYS batches: even a single event ships as a 1-element
   `{"events":[...]}` to `POST /api/v1/{track,identify}/batch`. The single-event

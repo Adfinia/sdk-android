@@ -29,7 +29,7 @@ data class AdfiniaConfig(
      */
     val writeKey: String,
     /** Ingest host. Defaults to the Adfinia production ingest endpoint. */
-    val host: String = "https://events.adfinia.com",
+    val host: String = "https://api.adfinia.com",
     /** Emit SDK internals to `Log.d("Adfinia", …)`. */
     val debug: Boolean = false,
     /** Consent gate. Called on every public API entry — see {@link AdfiniaConsent}. */

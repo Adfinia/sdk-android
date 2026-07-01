@@ -105,7 +105,7 @@ import java.util.Map;
 
 Adfinia.initialize(getApplicationContext(), new AdfiniaConfig(
     BuildConfig.ADFINIA_WRITE_KEY,
-    "https://events.adfinia.com",
+    "https://api.adfinia.com",
     BuildConfig.DEBUG,
     () -> ConsentStore.granted(),
     50,
@@ -141,7 +141,7 @@ Adfinia.flushBlocking();
 | Field | Default | Notes |
 |-------|---------|-------|
 | `writeKey` | — | Tenant write-only public key (`pk_live_…` / `pk_test_…`). |
-| `host` | `https://events.adfinia.com` | Override for self-hosted ingest. |
+| `host` | `https://api.adfinia.com` | Override for self-hosted ingest. |
 | `debug` | `false` | Log SDK internals to `Log.d("Adfinia", …)`. |
 | `consent` | `null` | Consent gate — see below. |
 | `flushAt` | `50` | Number of buffered events that triggers an immediate flush. |
