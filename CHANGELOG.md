@@ -4,6 +4,23 @@ All notable changes to the official Adfinia Android SDK land here. Format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The SDK
 follows [semver](https://semver.org/) starting at 1.0.0.
 
+## [1.1.3] - 2026-07-22
+
+### Fixed - release publish (Dokka javadoc generation)
+- The v1.1.2 consent KDoc contained the example `{ channels: [<normalized>],
+  status }`. Dokka parsed the `[<normalized>]` as a KDoc reference link and
+  tried to resolve `<normalized>` as a Kotlin identifier, crashing the
+  `:sdk:javaDocReleaseGeneration` task with
+  `IllegalStateException: not identifier: <normalized>` and failing the whole
+  release/publish build. Wrapped the example in a backtick code span so the
+  brackets are literal and Dokka never treats them as a link. No API change.
+- Replaced the two em dashes introduced by the v1.1.2 consent KDoc with ASCII
+  punctuation (`setConsent` facade doc and `normalizeChannels` doc).
+
+### Changed
+- `LIBRARY_VERSION` -> `1.1.3`; `X-Adfinia-SDK-Version` reports
+  `adfinia-sdk-android@1.1.3`; maven coordinates `com.adfinia:sdk-android:1.1.3`.
+
 ## [1.1.2] — 2026-07-22
 
 ### Added - write-only multi-channel consent API

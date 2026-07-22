@@ -64,7 +64,7 @@ dependencies {
 }
 
 mavenPublishing {
-    coordinates("com.adfinia", "sdk-android", "1.1.2")
+    coordinates("com.adfinia", "sdk-android", "1.1.3")
 
     pom {
         name.set("Adfinia SDK for Android")

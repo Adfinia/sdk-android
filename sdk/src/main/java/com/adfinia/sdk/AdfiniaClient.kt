@@ -223,9 +223,9 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
      * forwarded (trim + lowercase only) and future backend channels work with
      * no SDK release. Unknown channels are never rejected.
      *
-     * Emits exactly ONE event:
-     *   track("consent_updated", { channels: [<normalized>], status })
-     * where `channels` is ALWAYS an array on the wire, even for one channel.
+     * Emits exactly ONE event, where `channels` is ALWAYS an array on the
+     * wire, even for one channel:
+     * `track("consent_updated", { channels: [<normalized>], status })`
      *
      * Never throws. An invalid `status` logs a one-time debug message and
      * sends nothing; an empty channel list is a soft no-op.
@@ -380,7 +380,7 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
 
     /**
      * Normalize channels: trim, lowercase, drop empties. Does NOT reject
-     * unknown channel values — the backend owns the valid-channel registry.
+     * unknown channel values; the backend owns the valid-channel registry.
      */
     private fun normalizeChannels(channels: List<String>): List<String> =
         channels.map { it.trim().lowercase() }.filter { it.isNotEmpty() }

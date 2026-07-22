@@ -106,7 +106,7 @@ object Adfinia {
     /**
      * Record a write-only consent decision for one or more channels. `status`
      * is `"opted_in"` or `"opted_out"`. Channels are open strings (not an
-     * enum) — the backend owns the valid-channel registry. Emits one
+     * enum); the backend owns the valid-channel registry. Emits one
      * `consent_updated` event with `channels` always an array. Never throws.
      */
     @JvmStatic
