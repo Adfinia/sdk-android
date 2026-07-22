@@ -127,6 +127,76 @@ class AdfiniaClientTest {
     }
 
     @Test
+    fun `optOut(single) emits one consent_updated event with channels as an array`() = runBlocking {
+        val (client, transport) = newClient()
+        client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x", flushAt = 1, flushIntervalMs = 60_000L))
+        client.optOut("email")
+        waitFor { transport.sent.size >= 1 }
+        val env = transport.sent.single()
+        assertEquals(AdfiniaEnvelopeKind.TRACK, env.kind)
+        assertTrue(env.body.contains("\"event_name\":\"consent_updated\""))
+        assertTrue(env.body.contains("\"channels\":[\"email\"]"))
+        assertTrue(env.body.contains("\"status\":\"opted_out\""))
+        client._shutdownForTesting()
+    }
+
+    @Test
+    fun `optIn(array) normalizes channels (trim + lowercase) and keeps them an array`() = runBlocking {
+        val (client, transport) = newClient()
+        client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x", flushAt = 1, flushIntervalMs = 60_000L))
+        client.optIn(listOf("  Email ", "WhatsApp", "SMS"))
+        waitFor { transport.sent.size >= 1 }
+        val body = transport.sent.single().body
+        assertTrue(body.contains("\"channels\":[\"email\",\"whatsapp\",\"sms\"]"))
+        assertTrue(body.contains("\"status\":\"opted_in\""))
+        client._shutdownForTesting()
+    }
+
+    @Test
+    fun `setConsent accepts open (unknown) channel strings without rejecting them`() = runBlocking {
+        val (client, transport) = newClient()
+        client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x", flushAt = 1, flushIntervalMs = 60_000L))
+        client.setConsent(listOf("rcs", "voice", "app_notification"), "opted_in")
+        waitFor { transport.sent.size >= 1 }
+        assertTrue(transport.sent.single().body.contains("\"channels\":[\"rcs\",\"voice\",\"app_notification\"]"))
+        client._shutdownForTesting()
+    }
+
+    @Test
+    fun `invalid consent status sends nothing and does not throw`() = runBlocking {
+        val (client, transport) = newClient()
+        client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x", flushAt = 1, flushIntervalMs = 60_000L))
+        client.setConsent("email", "maybe")
+        client.setConsent("sms", "nope")
+        delay(50)
+        assertEquals(0, transport.sent.size)
+        client._shutdownForTesting()
+    }
+
+    @Test
+    fun `empty consent channel list is a soft no-op`() = runBlocking {
+        val (client, transport) = newClient()
+        client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x", flushAt = 1, flushIntervalMs = 60_000L))
+        client.optOut("   ")
+        client.optIn(emptyList())
+        delay(50)
+        assertEquals(0, transport.sent.size)
+        client._shutdownForTesting()
+    }
+
+    @Test
+    fun `consent event carries the current identity`() = runBlocking {
+        val (client, transport) = newClient()
+        client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x", flushAt = 2, flushIntervalMs = 60_000L))
+        client.identify(AdfiniaIdentifyArg.CustomerId("cust_42"), null)
+        client.optOut("whatsapp")
+        waitFor { transport.sent.size >= 2 }
+        val consent = transport.sent.first { it.body.contains("consent_updated") }
+        assertTrue(consent.body.contains("\"customer_id\":\"cust_42\""))
+        client._shutdownForTesting()
+    }
+
+    @Test
     fun `alias is a deprecated no-op that transmits nothing and leaves identity untouched`() = runBlocking {
         val (client, transport) = newClient()
         client.initialize(null, AdfiniaConfig(

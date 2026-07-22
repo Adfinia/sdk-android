@@ -42,6 +42,8 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
     private val initialised = AtomicBoolean(false)
     /** Guards the one-time alias() deprecation log — see the deprecated alias(). */
     private val aliasDeprecationLogged = AtomicBoolean(false)
+    /** Guards the one-time invalid-status log emitted by setConsent(). */
+    private val consentStatusLogged = AtomicBoolean(false)
     private var identity: IdentityStore? = null
     private var queue: EventQueue? = null
     private var context: AdfiniaContext? = null
@@ -211,6 +213,59 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
     }
 
     /**
+     * Record a consent decision for one or more channels. Write-only: the SDK
+     * key can set consent but never read it back (there is intentionally no
+     * getConsent()).
+     *
+     * `channels` are OPEN strings, not an enum: the backend owns the
+     * valid-channel registry (email/whatsapp/sms/push today, extensible to
+     * rcs/voice/app_notification later), so whatever value is passed is
+     * forwarded (trim + lowercase only) and future backend channels work with
+     * no SDK release. Unknown channels are never rejected.
+     *
+     * Emits exactly ONE event:
+     *   track("consent_updated", { channels: [<normalized>], status })
+     * where `channels` is ALWAYS an array on the wire, even for one channel.
+     *
+     * Never throws. An invalid `status` logs a one-time debug message and
+     * sends nothing; an empty channel list is a soft no-op.
+     */
+    fun setConsent(channels: List<String>, status: String) {
+        if (status != "opted_in" && status != "opted_out") {
+            if (consentStatusLogged.compareAndSet(false, true)) {
+                log(
+                    "setConsent() called with invalid status \"$status\" - " +
+                        "expected \"opted_in\" or \"opted_out\"; nothing sent",
+                )
+            }
+            return
+        }
+        val list = normalizeChannels(channels)
+        if (list.isEmpty()) {
+            log("setConsent() called with no channels - nothing sent")
+            return
+        }
+        // Reuse the standard track path: guard (init + consent gate), enqueue,
+        // transport. The backend ConsentSink consumes "consent_updated".
+        track("consent_updated", mapOf("channels" to list, "status" to status))
+    }
+
+    /** setConsent for a single channel. */
+    fun setConsent(channel: String, status: String) = setConsent(listOf(channel), status)
+
+    /** Shorthand for setConsent(channels, "opted_in"). */
+    fun optIn(channels: List<String>) = setConsent(channels, "opted_in")
+
+    /** Shorthand for setConsent(channel, "opted_in"). */
+    fun optIn(channel: String) = setConsent(listOf(channel), "opted_in")
+
+    /** Shorthand for setConsent(channels, "opted_out"). */
+    fun optOut(channels: List<String>) = setConsent(channels, "opted_out")
+
+    /** Shorthand for setConsent(channel, "opted_out"). */
+    fun optOut(channel: String) = setConsent(listOf(channel), "opted_out")
+
+    /**
      * Deprecated no-op. `alias()` never had a server-side handler (the backend
      * only processes track + identify; there is no alias/previous_id
      * processing), so it silently did nothing useful. Anonymous-to-known
@@ -322,6 +377,13 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
             false
         }
     }
+
+    /**
+     * Normalize channels: trim, lowercase, drop empties. Does NOT reject
+     * unknown channel values — the backend owns the valid-channel registry.
+     */
+    private fun normalizeChannels(channels: List<String>): List<String> =
+        channels.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
 
     private fun mergeTraits(a: AdfiniaTraits?, b: AdfiniaTraits?): AdfiniaTraits? {
         if (a == null) return b

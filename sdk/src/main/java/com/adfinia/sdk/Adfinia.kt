@@ -104,6 +104,47 @@ object Adfinia {
     }
 
     /**
+     * Record a write-only consent decision for one or more channels. `status`
+     * is `"opted_in"` or `"opted_out"`. Channels are open strings (not an
+     * enum) — the backend owns the valid-channel registry. Emits one
+     * `consent_updated` event with `channels` always an array. Never throws.
+     */
+    @JvmStatic
+    fun setConsent(channels: List<String>, status: String) {
+        client.setConsent(channels, status)
+    }
+
+    /** setConsent for a single channel. */
+    @JvmStatic
+    fun setConsent(channel: String, status: String) {
+        client.setConsent(channel, status)
+    }
+
+    /** Shorthand for setConsent(channels, "opted_in"). */
+    @JvmStatic
+    fun optIn(channels: List<String>) {
+        client.optIn(channels)
+    }
+
+    /** Shorthand for setConsent(channel, "opted_in"). */
+    @JvmStatic
+    fun optIn(channel: String) {
+        client.optIn(channel)
+    }
+
+    /** Shorthand for setConsent(channels, "opted_out"). */
+    @JvmStatic
+    fun optOut(channels: List<String>) {
+        client.optOut(channels)
+    }
+
+    /** Shorthand for setConsent(channel, "opted_out"). */
+    @JvmStatic
+    fun optOut(channel: String) {
+        client.optOut(channel)
+    }
+
+    /**
      * Deprecated. `alias()` is a no-op: there is no server-side handler for
      * alias/previous_id, and anonymous-to-known promotion already happens
      * automatically inside `identify()` (the SDK ships the live anonymous_id

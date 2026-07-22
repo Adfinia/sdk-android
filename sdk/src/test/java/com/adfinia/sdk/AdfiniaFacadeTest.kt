@@ -78,6 +78,23 @@ class AdfiniaFacadeTest {
     }
 
     @Test
+    fun `optOut on the static facade delegates and emits a consent_updated event`() = runBlocking {
+        Adfinia.client.initialize(null, AdfiniaConfig(
+            writeKey = "pk_test_x",
+            flushAt = 1,
+            flushIntervalMs = 60_000L,
+        ))
+        Adfinia.optOut(listOf("email", "sms"))
+        withTimeout(2_000L) {
+            while (synchronized(transport.sent) { transport.sent.isEmpty() }) delay(10)
+        }
+        val body = synchronized(transport.sent) { transport.sent.single().body }
+        assertTrue(body.contains("\"event_name\":\"consent_updated\""))
+        assertTrue(body.contains("\"channels\":[\"email\",\"sms\"]"))
+        assertTrue(body.contains("\"status\":\"opted_out\""))
+    }
+
+    @Test
     fun `reset clears the customer_id surface`() {
         Adfinia.client.initialize(null, AdfiniaConfig(writeKey = "pk_test_x"))
         Adfinia.identify("cust_42")

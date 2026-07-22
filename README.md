@@ -130,6 +130,9 @@ Adfinia.flushBlocking();
 | `Adfinia.identify(arg, traits?)` | Sealed-class form. |
 | `Adfinia.track(event, properties?)` | Event name + properties. |
 | `Adfinia.screen(name?, properties?)` | Screen view. |
+| `Adfinia.setConsent(channels, status)` | Write-only consent. `channels` is a `List<String>` (or a single `String` overload); `status` is `"opted_in"` or `"opted_out"`. Channels are open strings (not an enum) - the backend owns the valid-channel registry. Emits one `consent_updated` event with `channels` always an array. No read method by design. |
+| `Adfinia.optIn(channels)` | Shorthand for `setConsent(channels, "opted_in")`. |
+| `Adfinia.optOut(channels)` | Shorthand for `setConsent(channels, "opted_out")`. |
 | `Adfinia.alias(newId, previousId?)` | Deprecated (1.1.0), no-op. There is no server-side handler; identify() already promotes the anonymous session automatically. Use identify() instead. |
 | `Adfinia.reset()` | Logout — mints a new anonymous_id, clears customer_id + traits. |
 | `Adfinia.flush()` | `suspend` — drains the queue. |
