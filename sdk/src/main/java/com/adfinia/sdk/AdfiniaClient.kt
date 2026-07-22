@@ -40,6 +40,8 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
 
     @Volatile private var config: AdfiniaConfig? = null
     private val initialised = AtomicBoolean(false)
+    /** Guards the one-time alias() deprecation log — see the deprecated alias(). */
+    private val aliasDeprecationLogged = AtomicBoolean(false)
     private var identity: IdentityStore? = null
     private var queue: EventQueue? = null
     private var context: AdfiniaContext? = null
@@ -208,24 +210,27 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
         )
     }
 
+    /**
+     * Deprecated no-op. `alias()` never had a server-side handler (the backend
+     * only processes track + identify; there is no alias/previous_id
+     * processing), so it silently did nothing useful. Anonymous-to-known
+     * promotion already happens automatically in `identify()`, which ships the
+     * live anonymous_id alongside the customer_id. This method now enqueues and
+     * transmits nothing; it only emits a one-time deprecation log. The
+     * signature is retained so existing callers keep compiling.
+     */
+    @Deprecated(
+        "alias() is a no-op (no server-side handler); anonymous sessions are promoted automatically by identify()",
+        ReplaceWith("identify(AdfiniaIdentifyArg.CustomerId(newId), null)"),
+    )
     fun alias(newId: String, previousId: String?) {
-        if (!guard("alias")) return
-        if (newId.isBlank()) {
-            log("alias() called without a newId — dropped")
-            return
+        if (aliasDeprecationLogged.compareAndSet(false, true)) {
+            log(
+                "alias() is deprecated and is now a no-op: there is no server-side handler for it. " +
+                    "Anonymous sessions are promoted to known automatically by identify(). " +
+                    "Remove alias() calls and use identify() instead. (This message logs once.)",
+            )
         }
-        val id = identity ?: return
-        val prev = previousId ?: id.customerId ?: id.anonymousId
-        enqueue(
-            type = AdfiniaPayloadType.ALIAS,
-            event = null,
-            customerId = newId,
-            anonymousId = id.anonymousId,
-            previousId = prev,
-            properties = null,
-            traits = null,
-        )
-        id.identify(newId, null, null)
     }
 
     fun reset() {

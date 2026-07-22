@@ -4,15 +4,17 @@
 
 package com.adfinia.sdk
 
+// ALIAS was removed in 1.1.0: alias() is a deprecated no-op (no server-side
+// handler), so no alias payload is ever produced. A persisted "alias" envelope
+// from an older build now decodes to null (dropped) via fromWire().
 internal enum class AdfiniaPayloadType {
-    TRACK, IDENTIFY, PAGE, SCREEN, ALIAS;
+    TRACK, IDENTIFY, PAGE, SCREEN;
 
     fun wireValue(): String = when (this) {
         TRACK -> "track"
         IDENTIFY -> "identify"
         PAGE -> "page"
         SCREEN -> "screen"
-        ALIAS -> "alias"
     }
 
     companion object {
@@ -21,7 +23,6 @@ internal enum class AdfiniaPayloadType {
             "identify" -> IDENTIFY
             "page" -> PAGE
             "screen" -> SCREEN
-            "alias" -> ALIAS
             else -> null
         }
     }

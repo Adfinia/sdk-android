@@ -4,6 +4,26 @@ All notable changes to the official Adfinia Android SDK land here. Format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The SDK
 follows [semver](https://semver.org/) starting at 1.0.0.
 
+## [1.1.0] — 2026-07-22
+
+### Deprecated
+- **`alias()`** is deprecated and is now a no-op. There is no server-side
+  handler for alias/previous_id (the backend only processes track + identify),
+  so the call never did anything useful and misled integrators. Anonymous-to-
+  known promotion already happens automatically inside `identify()`, which
+  ships the live `anonymous_id` alongside the `customer_id`. Both
+  `Adfinia.alias(...)` and `AdfiniaClient.alias(...)` now carry Kotlin
+  `@Deprecated` annotations (with a `ReplaceWith("identify(...)")` quick-fix)
+  and enqueue/transmit nothing; the first call emits a one-time deprecation log
+  (debug-gated, same channel as other SDK internals). The method signature is
+  unchanged, so existing callers keep compiling. Migrate to `identify()`.
+
+### Removed
+- Internal `AdfiniaPayloadType.ALIAS` and its wire/synthesise/`previous_id`
+  merge branches in `PayloadCodec`. No `$alias` event can be produced, and a
+  persisted `alias` envelope from an older build now decodes to null (dropped).
+  No public-API impact.
+
 ## [1.0.1] — 2026-07-01
 
 ### Fixed

@@ -7,6 +7,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -72,17 +73,29 @@ class PayloadCodecTest {
     }
 
     @Test
-    fun `alias carries previous_id in properties`() {
-        val alias = track().copy(
-            type = AdfiniaPayloadType.ALIAS,
-            event = null,
-            previousId = "cust_old",
-            properties = null,
-            customerId = "cust_new",
+    fun `alias type is gone so a persisted alias envelope decodes to null`() {
+        // ALIAS was removed in 1.1.0 (alias() is a deprecated no-op). fromWire
+        // no longer maps "alias", and a persisted alias envelope from an older
+        // build is dropped rather than replayed.
+        assertNull(AdfiniaPayloadType.fromWire("alias"))
+        val legacyAliasEnvelope = JSONArray().apply {
+            put(JSONObject().apply {
+                put("type", "alias")
+                put("anonymous_id", "anon-1")
+                put("previous_id", "cust_old")
+                put("customer_id", "cust_new")
+                put("context", JSONObject().apply {
+                    put("library_name", "adfinia-sdk-android")
+                    put("library_version", "test")
+                })
+                put("sent_at", "2026-05-19T10:00:00.000Z")
+                put("message_id", "msg-1")
+            })
+        }.toString()
+        assertTrue(
+            "legacy alias envelopes must not rehydrate",
+            PayloadCodec.decodeQueue(legacyAliasEnvelope).isEmpty(),
         )
-        val o = JSONObject(PayloadCodec.toTrackWire(alias))
-        assertEquals("\$alias", o.getString("event_name"))
-        assertEquals("cust_old", o.getJSONObject("properties").getString("previous_id"))
     }
 
     @Test
