@@ -103,10 +103,20 @@ object Adfinia {
         client.screen(name, properties)
     }
 
-    /** Link an anonymous identity to a known customer-id. */
+    /**
+     * Deprecated. `alias()` is a no-op: there is no server-side handler for
+     * alias/previous_id, and anonymous-to-known promotion already happens
+     * automatically inside `identify()` (the SDK ships the live anonymous_id
+     * on the identify event). Call `identify()` instead.
+     */
+    @Deprecated(
+        "alias() is a no-op (no server-side handler); anonymous sessions are promoted automatically by identify()",
+        ReplaceWith("identify(newId)"),
+    )
     @JvmStatic
     @JvmOverloads
     fun alias(newId: String, previousId: String? = null) {
+        @Suppress("DEPRECATION")
         client.alias(newId, previousId)
     }
 

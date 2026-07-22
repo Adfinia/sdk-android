@@ -42,19 +42,13 @@ internal object PayloadCodec {
     private fun synthesiseName(p: AdfiniaPayload): String = when (p.type) {
         AdfiniaPayloadType.PAGE -> "\$page_viewed"
         AdfiniaPayloadType.SCREEN -> "\$screen_viewed"
-        AdfiniaPayloadType.ALIAS -> "\$alias"
         else -> "\$unknown"
     }
 
+    // alias events were removed in 1.1.0 (deprecated no-op), so there is no
+    // longer an ALIAS previous_id merge branch here; properties pass through
+    // unchanged for track/screen/page.
     private fun mergeProperties(p: AdfiniaPayload): Map<String, Any?>? {
-        // For alias events, carry the previous_id in properties so the server's
-        // identity-graph contract picks it up — same as the Web SDK.
-        if (p.type == AdfiniaPayloadType.ALIAS && p.previousId != null) {
-            val merged = LinkedHashMap<String, Any?>()
-            p.properties?.let { merged.putAll(it) }
-            merged["previous_id"] = p.previousId
-            return merged
-        }
         return p.properties
     }
 

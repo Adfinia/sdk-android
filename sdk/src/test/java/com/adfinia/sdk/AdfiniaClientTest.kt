@@ -127,20 +127,23 @@ class AdfiniaClientTest {
     }
 
     @Test
-    fun `alias emits an alias event with previous_id and updates identity`() = runBlocking {
+    fun `alias is a deprecated no-op that transmits nothing and leaves identity untouched`() = runBlocking {
         val (client, transport) = newClient()
         client.initialize(null, AdfiniaConfig(
             writeKey = "pk_test_x",
             flushAt = 1,
             flushIntervalMs = 60_000L,
         ))
+        val anonBefore = client._identity()?.anonymousId
+        @Suppress("DEPRECATION")
         client.alias("cust_new", "cust_old")
-        waitFor { transport.sent.size >= 1 }
-        val env = transport.sent.single()
-        assertEquals(AdfiniaEnvelopeKind.TRACK, env.kind)
-        assertTrue(env.body.contains("\"event_name\":\"\$alias\""))
-        assertTrue(env.body.contains("\"previous_id\":\"cust_old\""))
-        assertEquals("cust_new", client._identity()?.customerId)
+        // Give any (unwanted) enqueue+flush a chance to run; flushAt=1 would
+        // ship immediately if alias still enqueued.
+        delay(200)
+        assertTrue("alias() must not enqueue or transmit any event", transport.sent.isEmpty())
+        // identity is untouched: no customer_id set, anonymous_id unchanged.
+        assertNull(client._identity()?.customerId)
+        assertEquals(anonBefore, client._identity()?.anonymousId)
         client._shutdownForTesting()
     }
 

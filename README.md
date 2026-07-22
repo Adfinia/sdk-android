@@ -90,7 +90,6 @@ Adfinia.track(
 )
 
 Adfinia.screen("Pricing")
-Adfinia.alias("cust_42")
 Adfinia.reset()
 
 lifecycleScope.launch { Adfinia.flush() }
@@ -131,7 +130,7 @@ Adfinia.flushBlocking();
 | `Adfinia.identify(arg, traits?)` | Sealed-class form. |
 | `Adfinia.track(event, properties?)` | Event name + properties. |
 | `Adfinia.screen(name?, properties?)` | Screen view. |
-| `Adfinia.alias(newId, previousId?)` | Link the anonymous session to a known customer. |
+| `Adfinia.alias(newId, previousId?)` | Deprecated (1.1.0), no-op. There is no server-side handler; identify() already promotes the anonymous session automatically. Use identify() instead. |
 | `Adfinia.reset()` | Logout — mints a new anonymous_id, clears customer_id + traits. |
 | `Adfinia.flush()` | `suspend` — drains the queue. |
 | `Adfinia.flushBlocking()` | Java-friendly blocking variant. |
