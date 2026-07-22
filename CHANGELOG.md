@@ -4,6 +4,17 @@ All notable changes to the official Adfinia Android SDK land here. Format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The SDK
 follows [semver](https://semver.org/) starting at 1.0.0.
 
+## [1.1.1] — 2026-07-22
+
+### Fixed
+- **`NewApi` error / potential runtime crash on API 24-25.** `Iso8601` used
+  `ThreadLocal.withInitial`, which requires API 26 while `minSdk` is 24 — on
+  Android 24-25 devices this would throw `NoSuchMethodError` at runtime.
+  Replaced with an API-24-safe `ThreadLocal` subclass overriding
+  `initialValue()`. Caught by Android lint (CI green again).
+- Suppressed the `UNUSED_PARAMETER` warnings on the deprecated `alias()` no-op
+  (parameters retained for signature compatibility).
+
 ## [1.1.0] — 2026-07-22
 
 ### Deprecated

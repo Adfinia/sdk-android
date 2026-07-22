@@ -223,6 +223,7 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
         "alias() is a no-op (no server-side handler); anonymous sessions are promoted automatically by identify()",
         ReplaceWith("identify(AdfiniaIdentifyArg.CustomerId(newId), null)"),
     )
+    @Suppress("UNUSED_PARAMETER")
     fun alias(newId: String, previousId: String?) {
         if (aliasDeprecationLogged.compareAndSet(false, true)) {
             log(

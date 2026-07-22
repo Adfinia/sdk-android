@@ -14,7 +14,7 @@ package com.adfinia.sdk
 
 internal object BuildMeta {
     const val LIBRARY_NAME: String = "adfinia-sdk-android"
-    const val LIBRARY_VERSION: String = "1.1.0"
+    const val LIBRARY_VERSION: String = "1.1.1"
 
     /** Value to send as the `X-Adfinia-SDK-Version` header on every request. */
     const val SDK_VERSION_HEADER: String = "$LIBRARY_NAME@$LIBRARY_VERSION"
