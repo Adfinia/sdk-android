@@ -183,6 +183,38 @@ object Adfinia {
         client.flushBlocking()
     }
 
+    /**
+     * Register this device for push notifications. Pass a `token` if the host
+     * app already has an FCM token; omit it to let the SDK fetch the current
+     * FCM registration token (requires the `firebase-messaging` dependency on
+     * the host classpath). POSTs to `/api/v1/push/register` with the current
+     * identity and emits a `push_registered` event on success.
+     */
+    @JvmStatic
+    @JvmOverloads
+    suspend fun registerForPush(token: String? = null): RegisterPushResult =
+        client.registerForPush(token)
+
+    /** Remove the last-registered push token from the backend. */
+    @JvmStatic
+    suspend fun unregisterForPush(): RegisterPushResult = client.unregisterForPush()
+
+    /**
+     * Re-register with a rotated FCM token. Call from your
+     * `FirebaseMessagingService.onNewToken(token)`. No-op when unchanged.
+     */
+    @JvmStatic
+    suspend fun onNewPushToken(token: String): RegisterPushResult =
+        client.onNewPushToken(token)
+
+    /**
+     * The in-app notification inbox — `list()`, `markRead()`, `markAllRead()`,
+     * and a live SSE `stream()`. Null until `initialize()` has been called.
+     */
+    @JvmStatic
+    val notifications: AdfiniaInbox?
+        get() = client.notifications
+
     /** @suppress — internal use only. */
     @JvmStatic
     internal fun installForTesting(replacement: AdfiniaClient) {

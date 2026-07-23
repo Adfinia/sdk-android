@@ -137,6 +137,75 @@ Adfinia.flushBlocking();
 | `Adfinia.reset()` | Logout — mints a new anonymous_id, clears customer_id + traits. |
 | `Adfinia.flush()` | `suspend` — drains the queue. |
 | `Adfinia.flushBlocking()` | Java-friendly blocking variant. |
+| `Adfinia.registerForPush(token?)` | `suspend` — register for push; POSTs the token + identity to `/push/register` and emits `push_registered`. Omit `token` to fetch it from FCM. |
+| `Adfinia.onNewPushToken(token)` | `suspend` — re-register a rotated FCM token (call from `onNewToken`). |
+| `Adfinia.unregisterForPush()` | `suspend` — remove the last-registered token. |
+| `Adfinia.notifications` | In-app inbox client: `list()`, `markRead()`, `markAllRead()`, `stream()`. |
+
+---
+
+## Push notifications
+
+The SDK registers a device push token against the current identity so the
+Adfinia platform can fan out push campaigns.
+
+Firebase Cloud Messaging is an **optional** dependency. Two paths:
+
+**1. You already run FCM** (recommended). Add `firebase-messaging` to your app
+and let the SDK fetch the token:
+
+```kotlin
+lifecycleScope.launch {
+    when (val r = Adfinia.registerForPush()) {
+        is RegisterPushResult.Success -> Log.d("push", "registered ${r.token}")
+        is RegisterPushResult.Failure -> Log.w("push", "push failed: ${r.reason}")
+    }
+}
+
+// In your FirebaseMessagingService:
+override fun onNewToken(token: String) {
+    CoroutineScope(Dispatchers.IO).launch { Adfinia.onNewPushToken(token) }
+}
+```
+
+**2. You already have a token** (no Firebase dependency in the SDK needed):
+
+```kotlin
+lifecycleScope.launch { Adfinia.registerForPush(myFcmToken) }
+```
+
+On Android 13+ (API 33) request the `POST_NOTIFICATIONS` runtime permission in
+your app before showing notifications — the SDK registers the token regardless
+(the FCM token is available without the display permission), but the OS gates
+whether notifications are shown.
+
+To stop receiving pushes (e.g. on logout): `Adfinia.unregisterForPush()`.
+
+---
+
+## In-app notification inbox
+
+`Adfinia.notifications` is a contact-scoped inbox of in-app cards:
+
+```kotlin
+lifecycleScope.launch {
+    val page = Adfinia.notifications?.list(status = InboxStatus.UNREAD)
+    page?.data?.forEach { card ->
+        println("${card.severity} ${card.title}: ${card.body}")
+    }
+    Adfinia.notifications?.markAllRead()
+}
+
+// Live stream (SSE):
+val source = Adfinia.notifications?.stream(object : InboxStreamListener {
+    override fun onNotification(notification: InboxNotification) { /* render */ }
+})
+// later: source?.cancel()
+```
+
+`contact_id` defaults to the current identity (`customer_id`, else the
+`anonymous_id`); pass an explicit `contactId` argument to any method to
+override it.
 
 ### `AdfiniaConfig`
 

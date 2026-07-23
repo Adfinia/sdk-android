@@ -34,6 +34,11 @@ class AdfiniaHooks(
     val nowMs: (() -> Long)? = null,
     /** Skip WorkManager registration. Tests + JVM unit tests set this. */
     val skipBackgroundWorker: Boolean = false,
+    /**
+     * Push-token strategy used by `registerForPush()` when no token is passed.
+     * Defaults to the reflective FCM provider. Tests inject a fixed-token fake.
+     */
+    val pushTokenProvider: PushTokenProvider? = null,
 )
 
 class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
@@ -47,6 +52,8 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
     private var identity: IdentityStore? = null
     private var queue: EventQueue? = null
     private var context: AdfiniaContext? = null
+    private var push: PushManager? = null
+    private var inbox: AdfiniaInbox? = null
     private val now: () -> Long = hooks.nowMs ?: { System.currentTimeMillis() }
 
     /**
@@ -87,6 +94,37 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
             flushAt = config.flushAt.coerceAtLeast(1),
             flushIntervalMs = config.flushIntervalMs.coerceAtLeast(100L),
             maxQueueSize = config.maxQueueSize.coerceAtLeast(10),
+            debug = ::log,
+        )
+
+        // Control-plane HTTP (push register + inbox) — shares OkHttp's client
+        // pool with the event transport. Built from the config host unless a
+        // test injects one.
+        val http = AdfiniaHttp(host = config.host.trimEnd('/'), writeKey = config.writeKey)
+        this.push = PushManager(
+            http = http,
+            store = store,
+            identity = {
+                val id = this.identity
+                PushIdentity(
+                    customerId = id?.customerId,
+                    externalId = null, // Android identity has no separate external_id
+                    anonymousId = id?.anonymousId ?: "",
+                )
+            },
+            appVersion = { this.context?.appVersion },
+            defaultTokenProvider = hooks.pushTokenProvider ?: FcmTokenProvider,
+            track = { event, props -> track(event, props) },
+            debug = ::log,
+        )
+        this.inbox = AdfiniaInbox(
+            http = http,
+            host = config.host.trimEnd('/'),
+            writeKey = config.writeKey,
+            resolveContactId = {
+                val id = this.identity
+                id?.customerId ?: id?.anonymousId
+            },
             debug = ::log,
         )
 
@@ -309,6 +347,43 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
         runBlocking { queue?.flush() }
     }
 
+    // ---------- Push ----------
+
+    /**
+     * Register for push notifications. When [token] is null the default FCM
+     * provider fetches the current registration token; otherwise the supplied
+     * token is used. POSTs to /api/v1/push/register with the current identity
+     * and emits a `push_registered` event on success.
+     */
+    suspend fun registerForPush(token: String? = null): RegisterPushResult {
+        if (!initialised.get()) return RegisterPushResult.Failure(RegisterPushFailureReason.NOT_INITIALISED)
+        val p = push ?: return RegisterPushResult.Failure(RegisterPushFailureReason.NOT_INITIALISED)
+        return p.register(token)
+    }
+
+    /** Remove the last-registered push token from the backend. */
+    suspend fun unregisterForPush(): RegisterPushResult {
+        if (!initialised.get()) return RegisterPushResult.Failure(RegisterPushFailureReason.NOT_INITIALISED)
+        val p = push ?: return RegisterPushResult.Failure(RegisterPushFailureReason.NOT_INITIALISED)
+        return p.unregister()
+    }
+
+    /**
+     * Re-register with a rotated FCM token. Call from your
+     * `FirebaseMessagingService.onNewToken(token)`. No-op if unchanged.
+     */
+    suspend fun onNewPushToken(token: String): RegisterPushResult {
+        if (!initialised.get()) return RegisterPushResult.Failure(RegisterPushFailureReason.NOT_INITIALISED)
+        val p = push ?: return RegisterPushResult.Failure(RegisterPushFailureReason.NOT_INITIALISED)
+        return p.onNewToken(token)
+    }
+
+    // ---------- Inbox ----------
+
+    /** The in-app notification inbox client. Null until initialize() runs. */
+    val notifications: AdfiniaInbox?
+        get() = inbox
+
     // ---------- internal test surface ----------
 
     /** @suppress */
@@ -328,6 +403,8 @@ class AdfiniaClient(private val hooks: AdfiniaHooks = AdfiniaHooks()) {
         identity = null
         config = null
         context = null
+        push = null
+        inbox = null
         initialised.set(false)
     }
 
