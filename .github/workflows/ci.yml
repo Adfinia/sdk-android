@@ -15,9 +15,9 @@ jobs:
     name: Build + test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -29,7 +29,7 @@ jobs:
         run: ./gradlew :sdk:testReleaseUnitTest --no-daemon
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-test-report
           path: sdk/build/reports/tests/
@@ -39,15 +39,15 @@ jobs:
     name: Android lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v3
       - run: ./gradlew :sdk:lint --no-daemon
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-lint-report
           path: sdk/build/reports/lint-results-*.html
