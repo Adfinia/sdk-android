@@ -52,19 +52,30 @@ android {
 dependencies {
     implementation("androidx.annotation:annotation:1.7.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Server-Sent Events client for the in-app notification inbox live stream
+    // (GET /api/v1/notifications/stream). Same OkHttp version train.
+    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Firebase Cloud Messaging is OPTIONAL. Declared compileOnly so the
+    // analytics core (and JVM unit tests) work without it; host apps that use
+    // FCM already ship this and `registerForPush()` will fetch the token from
+    // it. Apps that pass their own token via `registerForPush(token)` need no
+    // Firebase dependency at all.
+    compileOnly("com.google.firebase:firebase-messaging:24.0.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
     // Android's runtime ships `org.json`; pull it in explicitly for JVM
     // unit tests so the same codec paths exercise off-device.
     testImplementation("org.json:json:20240303")
 }
 
 mavenPublishing {
-    coordinates("com.adfinia", "sdk-android", "1.1.3")
+    coordinates("com.adfinia", "sdk-android", "1.2.0")
 
     pom {
         name.set("Adfinia SDK for Android")

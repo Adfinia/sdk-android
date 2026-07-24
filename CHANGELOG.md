@@ -4,6 +4,56 @@ All notable changes to the official Adfinia Android SDK land here. Format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The SDK
 follows [semver](https://semver.org/) starting at 1.0.0.
 
+## [1.2.0] - 2026-07-24
+
+### Added - push registration + in-app notification inbox
+
+- **Push registration.** `Adfinia.registerForPush(token?)` obtains a push token
+  and POSTs it to `/api/v1/push/register` with the SDK's current identity
+  attached, mirroring the React Native SDK wire contract exactly:
+  `{ token, platform: "android", device_id, app_version, customer_id?,
+  external_id?, anonymous_id }` (`device_id` == `anonymous_id`, the stable
+  device/install identifier). Emits a `push_registered` track event on success.
+  - Firebase Cloud Messaging is an **optional (`compileOnly`) dependency**: when
+    no `token` is passed, the SDK fetches the current FCM registration token via
+    reflection so the analytics core keeps working in apps that don't ship FCM.
+    Apps that already have a token pass it directly and need no Firebase dep.
+  - `Adfinia.onNewPushToken(token)` — call from your
+    `FirebaseMessagingService.onNewToken(...)` to re-register a rotated token
+    (deduped: unchanged tokens are a no-op).
+  - `Adfinia.unregisterForPush()` — DELETEs the last-registered token
+    (`DELETE /api/v1/push/register/{token}`) and emits `push_unregistered`.
+- **In-app notification inbox.** `Adfinia.notifications` exposes:
+  - `list(status, cursor?, limit?, contactId?)` → `GET /api/v1/notifications`
+    returning a typed `InboxPage` of `InboxNotification` cards.
+  - `markRead(id, contactId?)` → `POST /api/v1/notifications/{id}/read`.
+  - `markAllRead(contactId?)` → `POST /api/v1/notifications/read-all`
+    (returns the number of rows flipped).
+  - `stream(listener, contactId?)` → live SSE over
+    `GET /api/v1/notifications/stream` via OkHttp `okhttp-sse`.
+  - `contact_id` defaults to the current identity (`customer_id`, else
+    `anonymous_id`); pass `contactId` to override.
+- New deps: `com.squareup.okhttp3:okhttp-sse:4.12.0` (implementation),
+  `com.google.firebase:firebase-messaging:24.0.0` (compileOnly, optional).
+- Tests: `PushManagerTest` (9) asserts the exact register/unregister wire shape,
+  the caller-token-wins path, token caching + onNewToken dedupe, and failure
+  reasons; `InboxClientTest` (7) covers list request shape + model parsing,
+  markRead/markAllRead, contact_id resolution/override, and error handling.
+
+### Changed
+- `LIBRARY_VERSION` -> `1.2.0`; `X-Adfinia-SDK-Version` reports
+  `adfinia-sdk-android@1.2.0`; maven coordinates `com.adfinia:sdk-android:1.2.0`.
+
+### Backend follow-up (not shipped here)
+- `POST /api/v1/push/register` (the endpoint this SDK targets, per the RN
+  contract) is served by the push activation `Provider`, whose `RegisterDevice`
+  currently **logs only and does not persist to the `device_tokens` table** (see
+  `api/internal/activation/push/dispatcher.go` + `fcm.go` — "persistence
+  deferred"). Only `POST /api/v1/device-tokens` writes that table, which is the
+  fan-out source. Until `/push/register` persists to `device_tokens`, tokens
+  registered by this SDK will not receive fan-out pushes. Flagged for the api
+  agent; no backend change made in this SDK repo.
+
 ## [1.1.3] - 2026-07-22
 
 ### Fixed - release publish (Dokka javadoc generation)

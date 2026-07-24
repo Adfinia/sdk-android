@@ -1,5 +1,34 @@
 # Adfinia SDK Android — next implementation steps
 
+## Round 4 status (2026-07-24) — push + inbox (v1.2.0)
+
+Push registration + the in-app notification inbox shipped this round,
+mirroring the React Native SDK contract. All covered by JVM JUnit tests
+(`:sdk:testReleaseUnitTest` green: 16 new tests across push + inbox).
+
+| ID | Title | Status |
+|----|-------|--------|
+| NEXT-AND-10 | Push registration — `registerForPush()`/`unregisterForPush()`/`onNewPushToken()`; FCM token via optional `compileOnly firebase-messaging` (reflection) or caller-supplied; POST `/push/register` with RN wire shape; emits `push_registered` | **DONE** |
+| NEXT-AND-11 | In-app inbox client — `Adfinia.notifications.list/markRead/markAllRead` + live SSE `stream()` (okhttp-sse); typed `InboxNotification` models | **DONE** |
+
+### 🔴 Backend follow-up (filed for the api agent — NOT fixed here)
+
+`POST /api/v1/push/register` is served by the push activation `Provider`
+(`Dispatcher.RegisterDevice` / `FCMProvider.RegisterDevice`), which **logs
+only and does not persist to `device_tokens`** ("persistence deferred" /
+"persistence handled by upstream dispatcher"). Only `POST /api/v1/device-tokens`
+writes that table, and `device_tokens` is the fan-out source
+(`ListActiveTokensForContact`). So tokens registered via `/push/register` never
+receive fan-out pushes.
+
+Additional contract mismatch on the api side: the Go `RegisterRequest` struct
+requires `contact_id` and rejects unknown fields (`DisallowUnknownFields`),
+whereas the OpenAPI spec + the RN/Android SDK send `{token, platform, device_id,
+app_version, customer_id/external_id/anonymous_id}` (no `contact_id`). The api
+handler should either point `/push/register` at the `device_tokens` repository
+(resolving the contact from the identity bag) or the SDKs should be redirected
+to `/device-tokens`. Decision is the api agent's; this SDK mirrors RN as-is.
+
 ## Round 2 status (2026-05-20)
 
 The skeleton has been replaced with real implementations. Everything below
