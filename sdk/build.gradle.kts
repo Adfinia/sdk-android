@@ -1,7 +1,11 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
-    id("com.android.library")
-    id("org.jetbrains.kotlin.android")
-    id("com.vanniktech.maven.publish")
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.vanniktech.mavenpublish)
+    // Generates the API docs that back the Central-required javadoc jar.
+    alias(libs.plugins.dokka)
 }
 
 android {
@@ -75,11 +79,19 @@ dependencies {
 }
 
 mavenPublishing {
+    // Upload to the Central Portal (central.sonatype.com), where the
+    // `com.adfinia` namespace is registered, and GPG-sign every artifact
+    // (Central requires signatures). Credentials + the in-memory signing key
+    // are read from Gradle properties / env vars by the plugin (see
+    // PUBLISHING.md); nothing is hardcoded here.
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+
     coordinates("com.adfinia", "sdk-android", "1.2.0")
 
     pom {
         name.set("Adfinia SDK for Android")
-        description.set("Official Adfinia SDK — first-party event + identify ingestion.")
+        description.set("Official Adfinia SDK: first-party event and identify ingestion for Android.")
         url.set("https://github.com/Adfinia/sdk-android")
         licenses {
             license {

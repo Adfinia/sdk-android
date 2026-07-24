@@ -1,0 +1,20 @@
+# Gradle version catalog for the Adfinia Android SDK.
+#
+# Plugin versions live here so the root/module build scripts reference a single
+# source of truth (and so the product library-catalog can track them). Library
+# (dependency) versions remain declared inline in sdk/build.gradle.kts for now.
+
+[versions]
+agp = "8.4.0"
+kotlin = "1.9.23"
+# Maven Central (Central Portal) publishing — handles the Portal upload, POM,
+# signing, and sources/javadoc jars. See PUBLISHING.md.
+vanniktech-mavenpublish = "0.28.0"
+# API-doc generation; feeds the Central-required javadoc jar.
+dokka = "1.9.20"
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+vanniktech-mavenpublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-mavenpublish" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }

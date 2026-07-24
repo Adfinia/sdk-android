@@ -1,9 +1,11 @@
 // Root project — no buildscript work happens here; everything is in :sdk.
 
 plugins {
-    id("com.android.library") version "8.4.0" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.23" apply false
-    id("com.vanniktech.maven.publish") version "0.28.0" apply false
+    // Versions come from gradle/libs.versions.toml (the version catalog).
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.vanniktech.mavenpublish) apply false
+    alias(libs.plugins.dokka) apply false
 }
 
 tasks.register("clean", Delete::class) {
